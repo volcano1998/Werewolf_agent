@@ -43,7 +43,7 @@ const DICT = {
     thoughts: "What the AI players were secretly thinking", backLobby: "Back to lobby",
     exTitle: (id) => `# Werewolf game ${id}`, exYou: (n, r, o) => `You: ${n}, ${r}${o ? `. Result: ${o} won.` : " (game in progress)"}`, exRoles: "## Roles", exPrivate: "## Your private info", exPlayers: "## Players", exVote: "## Vote table", exFlags: "## Flags", exCost: "## Cost", exMine: "## My notes", exAI: "## AI analysis", exTranscript: "## Transcript", exThoughts: "## AI players' private thoughts",
     exClaims: "Claims", exSusp: "Suspects", exTrust: "Trusts", exVoted: "Voted for", none: "none", diedAt: (d, r) => `died day ${d}${r ? ", " + r : ""}`,
-    round: (r) => `round ${r}`, say: "said", winnerVillage: "village", winnerWolves: "werewolves",
+    abstain: "abstained", round: (r) => `round ${r}`, say: "said", winnerVillage: "village", winnerWolves: "werewolves",
   },
   zh: {
     title: "🐺 狼人杀", musicOn: "🎵 音乐开", musicOff: "🎵 音乐关", voiceOn: "🔊 语音开", voiceOff: "🔇 语音关", skip: "⏭ 跳过",
@@ -81,7 +81,7 @@ const DICT = {
     thoughts: "AI 玩家的真实想法", backLobby: "回到大厅",
     exTitle: (id) => `# 狼人杀对局 ${id}`, exYou: (n, r, o) => `你:${n},${r}${o ? `。结果:${o}获胜。` : "(游戏进行中)"}`, exRoles: "## 身份", exPrivate: "## 你的私密信息", exPlayers: "## 玩家", exVote: "## 投票表", exFlags: "## 疑点", exCost: "## 费用", exMine: "## 我的笔记", exAI: "## AI 复盘", exTranscript: "## 对话记录", exThoughts: "## AI 玩家的内心想法",
     exClaims: "跳身份", exSusp: "怀疑", exTrust: "信任", exVoted: "投给", none: "无", diedAt: (d, r) => `第${d}天死亡${r ? "," + r : ""}`,
-    round: (r) => `第${r}轮`, say: "说", winnerVillage: "村民", winnerWolves: "狼人",
+    abstain: "弃票", round: (r) => `第${r}轮`, say: "说", winnerVillage: "村民", winnerWolves: "狼人",
   },
 };
 function t(k, ...a) { const v = DICT[LANG][k] ?? DICT.en[k] ?? k; return typeof v === "function" ? v(...a) : v; }

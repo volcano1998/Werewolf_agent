@@ -69,7 +69,7 @@ const STR = {
     night: (n) => `Night ${n} falls over the village. Everybody, close your eyes.`,
     wolvesOpen: "Werewolves, open your eyes. Choose your victim.", wolvesClose: "Werewolves, close your eyes.",
     seerOpen: "Seer, open your eyes. Choose a player to inspect.", seerClose: "Seer, close your eyes.",
-    doctorOpen: "Doctor, open your eyes. Choose a player to protect.", doctorClose: "Doctor, close your eyes.",
+    doctorOpen: "Doctor, open your eyes. Will you use your healing potion?", doctorClose: "Doctor, close your eyes.",
     dawn: "Everybody, open your eyes. The sun is rising.",
     killed: (n, r) => `Last night, ${n} was killed by the werewolves.${r ? ` They were the ${r}.` : ""}`,
     nobody: "Last night, nobody died. The doctor saved a life, or the werewolves slipped. Nobody knows.",
@@ -78,17 +78,19 @@ const STR = {
     eliminated: (n, v, r) => `${n} is eliminated with ${v} votes.${r ? ` They were the ${r}.` : ""}`,
     tie: (names) => `A tie between ${names.join(" and ")}. Nobody is eliminated.`,
     winVillage: "The werewolves are gone. The village wins!", winWolves: "The werewolves have taken over. Werewolves win!",
-    inspected: (t, w) => `🔮 You inspected ${t}: ${w ? "WEREWOLF!" : "not a werewolf."}`, protectedMsg: (t) => `💉 You protected ${t}.`,
+    inspected: (t, w) => `🔮 You inspected ${t}: ${w ? "WEREWOLF!" : "not a werewolf."}`, protectedMsg: (t) => `💉 You used your healing potion on ${t}. It is gone for good.`,
     whisper: (by, text, target) => `🐺 ${by} whispers: "${text}" (wants to kill ${target})`,
     hint: (by, text, target) => `Your partner ${by} whispers: "${text}" (they want to kill ${target}).`,
+    docSees: (n) => `The werewolves chose to kill ${n} tonight.`, docOnce: "You have ONE healing potion for the whole game.", docSkip: "Keep the potion", docKept: "💉 You kept your potion for a later night.", docEmpty: "💉 Your healing potion is already used, so you can only watch tonight.",
+    lAbstain: "Abstain (vote for nobody)", allAbstain: "Everybody abstained. Nobody is eliminated.",
     silent: "(stays silent)", fallbackSay: "…I'll listen for now.",
-    lKill: "Choose who the werewolves kill tonight", lSeer: "Choose a player to inspect", lDoctor: "Choose a player to protect", lVote: "Vote to eliminate a player",
+    lKill: "Choose who the werewolves kill tonight", lSeer: "Choose a player to inspect", lDoctor: "Use your healing potion to save the victim?", lVote: "Vote to eliminate a player",
   },
   zh: {
     night: (n) => `第${n}个夜晚降临了。请所有人闭上眼睛。`,
     wolvesOpen: "狼人请睁眼,选择你们的猎物。", wolvesClose: "狼人请闭眼。",
     seerOpen: "预言家请睁眼,选择一名玩家查验。", seerClose: "预言家请闭眼。",
-    doctorOpen: "医生请睁眼,选择一名玩家守护。", doctorClose: "医生请闭眼。",
+    doctorOpen: "医生请睁眼。你要使用解药吗?", doctorClose: "医生请闭眼。",
     dawn: "天亮了,请所有人睁眼。",
     killed: (n, r) => `昨晚,${n}被狼人杀死了。${r ? `他的身份是${r}。` : ""}`,
     nobody: "昨晚没有人死亡。可能是医生救了人,也可能是狼人失手了。没人知道。",
@@ -97,11 +99,13 @@ const STR = {
     eliminated: (n, v, r) => `${n}以${v}票被放逐。${r ? `他的身份是${r}。` : ""}`,
     tie: (names) => `${names.join("和")}平票,无人被放逐。`,
     winVillage: "狼人全部出局,村民获胜!", winWolves: "狼人占领了村庄,狼人获胜!",
-    inspected: (t, w) => `🔮 你查验了${t}:${w ? "是狼人!" : "不是狼人。"}`, protectedMsg: (t) => `💉 你守护了${t}。`,
+    inspected: (t, w) => `🔮 你查验了${t}:${w ? "是狼人!" : "不是狼人。"}`, protectedMsg: (t) => `💉 你对${t}使用了解药,解药已用完。`,
     whisper: (by, text, target) => `🐺 ${by}悄悄说:“${text}”(想杀${target})`,
     hint: (by, text, target) => `你的同伴${by}悄悄说:“${text}”(他想杀${target})。`,
+    docSees: (n) => `今晚狼人选择杀死${n}。`, docOnce: "你整局只有一瓶解药。", docSkip: "留着解药", docKept: "💉 你把解药留到以后再用。", docEmpty: "💉 你的解药已经用掉了,今晚只能旁观。",
+    lAbstain: "弃票(不投任何人)", allAbstain: "所有人都弃票了,无人被放逐。",
     silent: "(保持沉默)", fallbackSay: "……我先听听大家怎么说。",
-    lKill: "选择今晚狼人要杀的人", lSeer: "选择要查验的玩家", lDoctor: "选择要守护的玩家", lVote: "投票放逐一名玩家",
+    lKill: "选择今晚狼人要杀的人", lSeer: "选择要查验的玩家", lDoctor: "要用解药救这个人吗?", lVote: "投票放逐一名玩家",
   },
 };
 const tr = (g, k, ...a) => { const v = STR[g.lang][k]; return typeof v === "function" ? v(...a) : v; };
@@ -123,7 +127,7 @@ const ROLE_SET = ["werewolf", "werewolf", "seer", "doctor", "villager", "village
 const ROLE_INFO = {
   werewolf: "a WEREWOLF: each night you and your partner kill someone. You win when werewolves equal or outnumber everyone else.",
   seer: "the SEER: each night you learn whether one player is a werewolf. You win with the village.",
-  doctor: "the DOCTOR: each night you protect one player from the werewolves (not the same player two nights in a row). You win with the village.",
+  doctor: "the DOCTOR: you own ONE healing potion for the whole game. Each night you learn who the werewolves chose to kill, and you may use the potion to save that player. Once used, it is gone for good and you can only talk and vote. You win with the village.",
   villager: "a VILLAGER with no power except your brain. You win with the village.",
 };
 
@@ -187,7 +191,7 @@ function createGame({ name, avatar, title, role, ids, rounds, reveal, lang, tier
   const human = players.find((p) => p.human), want = players.find((p) => p.role === role && !p.human);
   if (human && want && human.role !== role) [human.role, want.role] = [want.role, human.role];
   const g = {
-    id: randomBytes(5).toString("hex"), players, rounds, reveal, lang, tier: tierOf(tier), stats: { claims: {}, votes: {}, suspects: {} }, day: 0, log: [], history: [], waiters: [], thoughts: [],
+    id: randomBytes(5).toString("hex"), players, rounds, reveal, lang, tier: tierOf(tier), stats: { claims: {}, votes: {}, suspects: {}, silent: {} }, day: 0, log: [], history: [], waiters: [], thoughts: [],
     cost: 0, calls: 0, tokens: 0, ledger: { who: {}, task: {}, day: {} }, waiting: false, resolve: null, options: null, need: null, over: false, lastSaved: null, started: Date.now(),
   };
   return g;
@@ -205,7 +209,7 @@ function systemFor(g, p) {
 PERSONALITY: ${p.persona.style}
 HOW YOU TALK: ${p.persona.talk}
 LANGUAGE: ${LANGS[g.lang].instr}
-THE GAME: ${g.players.length} players: ${g.players.map((x) => `${x.name} (${x.title})`).join(", ")}. There are 2 werewolves, 1 seer, 1 doctor and 3 villagers. Each night the werewolves kill one player. The seer learns if one player is a werewolf. The doctor protects one player. Each day everyone discusses, then everyone votes to eliminate one player (a tie means nobody is eliminated). The village wins when both werewolves are dead; the werewolves win when they equal or outnumber everyone else.${g.reveal ? " An eliminated player's role is revealed." : ""}
+THE GAME: ${g.players.length} players: ${g.players.map((x) => `${x.name} (${x.title})`).join(", ")}. There are 2 werewolves, 1 seer, 1 doctor and 3 villagers. Each night the werewolves kill one player. The seer learns if one player is a werewolf. The doctor has ONE healing potion for the whole game and may use it on a night to save that night's victim. Each day everyone discusses, then everyone votes to eliminate one player (a tie means nobody is eliminated). The village wins when both werewolves are dead; the werewolves win when they equal or outnumber everyone else.${g.reveal ? " An eliminated player's role is revealed." : ""}
 ${roleLine}
 STRATEGY YOU HAVE STUDIED:
 ${guide}
@@ -220,12 +224,14 @@ function factsFor(g) {
   const clash = ["seer", "doctor"].filter((r) => byRole[r]?.size > 1).map((r) => `${[...byRole[r]].join(" and ")} BOTH claim ${r}, so at least one is lying`);
   const flip = Object.entries(S.claims).filter(([, c]) => new Set(c.map((x) => x.role)).size > 1).map(([n]) => `${n} has changed their role claim`);
   L.push(`Role claims: ${claims.join("; ") || "none yet"}.${clash.length ? " ALERT: " + clash.join("; ") + "." : ""}${flip.length ? " ALERT: " + flip.join("; ") + "." : ""}`);
-  const vd = Object.keys(S.votes).sort((a, b) => a - b).map((d) => `Day ${d}: ${Object.entries(S.votes[d]).map(([w, t]) => `${w}→${t}`).join(", ")}`);
+  const vd = Object.keys(S.votes).sort((a, b) => a - b).map((d) => `Day ${d}: ${Object.entries(S.votes[d]).map(([w, t]) => `${w}→${t ?? "abstain"}`).join(", ")}`);
   L.push(`Votes so far: ${vd.length ? vd.join(" | ") : "none yet"}.`);
   const heat = {};
   Object.entries(S.suspects).forEach(([w, list]) => list.forEach((x) => (heat[x.who] ||= new Set()).add(w)));
   const hot = Object.entries(heat).filter(([n]) => byName(g, n)?.alive).sort((a, b) => b[1].size - a[1].size).map(([n, w]) => `${n} (suspected by ${[...w].join(", ")})`);
   L.push(`Who is suspected: ${hot.join("; ") || "nobody yet"}.`);
+  const mute = Object.entries(S.silent).filter(([n, c]) => c > 0 && byName(g, n)?.alive).map(([n, c]) => `${n} (${c}x)`);
+  if (mute.length) L.push(`Players who said NOTHING when it was their turn to speak: ${mute.join(", ")}. Silence is only a weak hint (some people are just quiet or careful), so do not pile on a silent player unless there are other reasons too.`);
   const silent = alive(g).filter((x) => !S.suspects[x.name]?.length && g.day > 1).map((x) => x.name);
   if (silent.length) L.push(`Players who have not named a suspect yet: ${silent.join(", ")}.`);
   return L.join("\n");
@@ -234,15 +240,16 @@ function userFor(g, p, task, extra = "") {
   const log = g.log.slice(-120).join("\n") || "(nothing has happened yet)";
   const partner = p.role === "werewolf" ? g.players.find((x) => x.role === "werewolf" && x !== p) : null;
   const mates = partner ? `Your fellow werewolf ${partner.name} is ${partner.alive ? "ALIVE" : "dead"}. Protect them without being obvious: do not accuse or vote for them unless that is the only way to survive.\n` : "";
-  const known = mates + (p.known.length ? p.known.join("\n") : partner ? "" : "(nothing special)");
+  const potion = p.role === "doctor" ? `Your healing potion: ${p.potion === false ? "ALREADY USED, it is gone" : "still AVAILABLE (one use for the whole game)"}.\n` : "";
+  const known = mates + potion + (p.known.length ? p.known.join("\n") : partner ? "" : "(nothing special)");
   return `=== PUBLIC LOG ===\n${log}\n\n=== TABLE FACTS (computed by the referee, accurate) ===\n${factsFor(g)}\n\n=== YOUR PRIVATE KNOWLEDGE ===\n${known}\n\n=== YOUR PRIVATE NOTES FROM EARLIER ===\n${p.notes || "(none yet)"}\n\n=== NOW ===\nTASK: ${task}\nALIVE: ${alive(g).map((x) => x.name).join(", ")}\n${extra}`;
 }
 const SPEC = {
   speak: `Return JSON only: {"thought":"your private reasoning in 2-4 sentences: weigh the claims, the votes and the behavior, say who benefits, and decide your plan","say":"what you say out loud, in character, max 60 words","suspect":"the one player you most suspect right now, or null","trust":"the one player you most trust right now, or null","claim":"seer, doctor or villager ONLY if your words publicly claim that role this turn, otherwise null","notes":"your updated private notes, max 60 words"}`,
-  vote: `Return JSON only: {"thought":"your private reasoning, 1-2 sentences","vote":"the name of exactly one living player other than yourself","notes":"your updated private notes, max 40 words"}`,
+  vote: `Return JSON only: {"thought":"rank the living players from most to least likely to be a werewolf, weighing concrete evidence (lies, contradictions, vote patterns, steering) above silence or style, then pick; 2-3 sentences","vote":"the name of exactly one living player other than yourself, or the single word abstain to vote for nobody (rare: abstaining helps the werewolves)","notes":"your updated private notes, max 40 words"}`,
   wolf: `Return JSON only: {"thought":"your private reasoning, 1-2 sentences","target":"the name of the living non-werewolf you want to kill","whisper":"one short sentence to your partner explaining the choice"}`,
   seer: `Return JSON only: {"thought":"your private reasoning, 1-2 sentences","target":"the name of one living player you have not inspected, other than yourself"}`,
-  doctor: `Return JSON only: {"thought":"your private reasoning, 1-2 sentences","target":"the name of one living player to protect"}`,
+  doctor: `Return JSON only: {"thought":"your private reasoning, 1-2 sentences","use_potion":true or false}`,
 };
 
 // Ask one AI player to act. Validates the answer; one retry on bad JSON; a safe random fallback so a game never stalls.
@@ -267,6 +274,11 @@ async function ask(g, p, task, { extra = "", valid = [], max = 700 } = {}) {
     res.suspect = pick(out.suspect) || null;
     res.trust = pick(out.trust) || null;
     res.claim = ["seer", "doctor", "villager"].includes(String(out.claim).toLowerCase()) ? String(out.claim).toLowerCase() : null;
+  } else if (task === "vote" && (out.abstain === true || /^(abstain|弃票|pass)$/i.test(String(out.vote ?? "").trim()))) {
+    res.target = null;
+  } else if (task === "doctor") {
+    res.use = out.use_potion === true || String(out.use_potion).toLowerCase() === "true";
+    res.target = valid[0];
   } else {
     res.target = pick(out.target ?? out.vote) || shuffle(valid)[0];
     res.whisper = String(out.whisper || "").slice(0, 200);
@@ -278,7 +290,7 @@ async function ask(g, p, task, { extra = "", valid = [], max = 700 } = {}) {
 
 function human(g, kind, opts = {}) {
   return new Promise((resolve) => {
-    g.waiting = true; g.resolve = resolve; g.options = opts.options || null; g.need = kind;
+    g.waiting = true; g.resolve = resolve; g.options = opts.options || null; g.need = kind; g.canSkip = !!opts.skipLabel;
     emit(g, { type: "need", kind, day: g.day, ...opts });
   });
 }
@@ -305,7 +317,6 @@ async function night(g) {
   const seer = alive(g).find((p) => p.role === "seer");
   const doc = alive(g).find((p) => p.role === "doctor");
   const victims = names(alive(g).filter((p) => p.role !== "werewolf"));
-  const saveOpts = names(alive(g)).filter((n) => n !== g.lastSaved);
   const seerOpts = names(alive(g).filter((p) => p !== seer && !seer?.inspected?.has(p.name)));
 
   // AI actions that do not depend on each other run together while the narrator talks
@@ -317,8 +328,7 @@ async function night(g) {
     }
   })();
   const seerTask = seer && !seer.human ? ask(g, seer, "seer", { valid: seerOpts, extra: `Night ${g.day}: choose one player to inspect. Candidates: ${seerOpts.join(", ")}.` }) : null;
-  const docTask = doc && !doc.human ? ask(g, doc, "doctor", { valid: saveOpts, extra: `Night ${g.day}: choose who to protect from the werewolves. Candidates: ${saveOpts.join(", ")}.` }) : null;
-  await Promise.all([wolfTask, seerTask, docTask]);
+  await Promise.all([wolfTask, seerTask]);
 
   // every role is called even when nobody is left in it, so the script never gives away who is alive
   beat(g, tr(g, "wolvesOpen"), 2200);
@@ -344,12 +354,22 @@ async function night(g) {
 
   beat(g, tr(g, "doctorOpen"), doc ? 1800 : 3500);
   if (doc) {
-    protect = doc.human ? (await human(g, "night_doctor", { options: saveOpts, label: tr(g, "lDoctor") })).target : (await docTask).target;
-    doc.known.push(`Night ${g.day}: you protected ${protect}.`);
-    if (doc.human) emit(g, { type: "private", text: tr(g, "protectedMsg", protect), day: g.day });
+    doc.potion ??= true;
+    const shown = tr(g, "docSees", kill);
+    if (doc.human) emit(g, { type: "private", text: "🩺 " + shown, day: g.day });
+    if (!doc.potion) {
+      if (doc.human) emit(g, { type: "private", text: tr(g, "docEmpty"), day: g.day });
+    } else {
+      // the doctor sees tonight's victim and decides whether to spend the single potion
+      const use = doc.human
+        ? !(await human(g, "night_doctor", { options: [kill], hint: shown + " " + tr(g, "docOnce"), label: tr(g, "lDoctor"), skipLabel: tr(g, "docSkip") })).skip
+        : (await ask(g, doc, "doctor", { valid: [kill], extra: `Night ${g.day}: ${shown} You still have your ONE healing potion. Use it now to save ${kill}, or keep it for a later night? Answer use_potion true or false.` })).use;
+      if (use) { doc.potion = false; protect = kill; }
+      doc.known.push(`Night ${g.day}: the werewolves chose to kill ${kill}; you ${use ? "USED your healing potion to save them (the potion is now gone)" : "kept your healing potion"}.`);
+      if (doc.human) emit(g, { type: "private", text: use ? tr(g, "protectedMsg", kill) : tr(g, "docKept"), day: g.day });
+    }
   }
   beat(g, tr(g, "doctorClose"), 1600);
-  g.lastSaved = protect;
   wolves.forEach((w) => w.known.push(`Night ${g.day}: the werewolves chose to kill ${kill}.`));
   return { kill, protect };
 }
@@ -385,6 +405,7 @@ async function day(g, { kill: target, protect }) {
       let ev;
       if (p.human) {
         const a = await human(g, "speak", { options: others, round: r, rounds: g.rounds });
+        if (!String(a.text || "").trim()) g.stats.silent[p.name] = (g.stats.silent[p.name] || 0) + 1;
         ev = { text: String(a.text || "").trim().slice(0, 600) || tr(g, "silent"), suspect: byName(g, a.suspect)?.name || null, trust: null, claim: null };
       } else {
         emit(g, { type: "thinking", who: p.name });
@@ -402,16 +423,21 @@ async function day(g, { kill: target, protect }) {
   emit(g, { type: "phase", phase: "vote", day: g.day, label: `Day ${g.day}: vote` });
   const votes = {};
   const aiVoters = living.filter((p) => !p.human);
-  await Promise.all(aiVoters.map(async (p) => { votes[p.name] = (await ask(g, p, "vote", { valid: names2(living, p), extra: `Voting time on day ${g.day}. Vote to eliminate exactly one living player other than yourself.` })).target; }));
+  await Promise.all(aiVoters.map(async (p) => { votes[p.name] = (await ask(g, p, "vote", { valid: names2(living, p), extra: `Voting time on day ${g.day}. Vote to eliminate exactly one living player other than yourself, or abstain. Weigh concrete evidence most: lies, contradictions, suspicious votes, and who tried to steer the vote. Silence or a short answer is only a weak hint, so never vote someone out for that alone; a quiet player may just be shy or careful. If you truly have no solid reason on day 1, abstaining is acceptable. Do not vote for someone merely because they are the loudest accuser.` })).target; }));
   const me = g.players.find((p) => p.human);
-  if (me.alive) votes[me.name] = (await human(g, "vote", { options: names2(living, me), label: tr(g, "lVote") })).target;
+  if (me.alive) { const a = await human(g, "vote", { options: names2(living, me), label: tr(g, "lVote"), skipLabel: tr(g, "lAbstain") }); votes[me.name] = a.skip ? null : a.target; }
   const tally = {};
   for (const p of living) {
-    const v = votes[p.name];
-    note(g, `[Day ${g.day} vote] ${p.name} voted for ${v}.`);
+    const v = votes[p.name] ?? null;
+    note(g, v ? `[Day ${g.day} vote] ${p.name} voted for ${v}.` : `[Day ${g.day} vote] ${p.name} abstained.`);
     ((g.stats.votes[g.day] ||= {})[p.name] = v);
     emit(g, { type: "vote", who: p.name, target: v, day: g.day });
-    tally[v] = (tally[v] || 0) + 1;
+    if (v) tally[v] = (tally[v] || 0) + 1;
+  }
+  if (!Object.keys(tally).length) {
+    beat(g, tr(g, "allAbstain"), 1800);
+    note(g, `[Day ${g.day}] Everybody abstained. Nobody eliminated.`);
+    return winner(g);
   }
   const top = Math.max(...Object.values(tally));
   const leaders = Object.keys(tally).filter((n) => tally[n] === top);
@@ -471,7 +497,7 @@ async function study() {
   const r = await chat({
     model: STUDY_MODEL, max_tokens: 2800, reasoning: { enabled: false }, plugins: [{ id: "web", max_results: 6 }],
     system: "You are a researcher who writes strategy guides for the social deduction game Werewolf (also called Mafia).",
-    user: `Search the web for expert strategy advice for Werewolf / Mafia (strategy wikis, guides, forum posts). Then write a guide for AI players in exactly this format: five sections that start with the lines "## GENERAL", "## WEREWOLF", "## SEER", "## DOCTOR", "## VILLAGER". Each section has 5 to 7 concrete bullet points of one or two sentences: what to say, when to reveal a role, who to target at night, how to read votes and catch lies. The game has 7 players: 2 werewolves, 1 seer, 1 doctor, 3 villagers, with a discussion and a vote every day, and the doctor cannot protect the same player two nights in a row. Under 800 words total. Output only the guide, starting with "## GENERAL".`,
+    user: `Search the web for expert strategy advice for Werewolf / Mafia (strategy wikis, guides, forum posts). Then write a guide for AI players in exactly this format: five sections that start with the lines "## GENERAL", "## WEREWOLF", "## SEER", "## DOCTOR", "## VILLAGER". Each section has 5 to 7 concrete bullet points of one or two sentences: what to say, when to reveal a role, who to target at night, how to read votes and catch lies. The game has 7 players: 2 werewolves, 1 seer, 1 doctor, 3 villagers, with a discussion and a vote every day, and the doctor has a single healing potion for the whole game: each night they learn the werewolves' victim and may use the potion to save them, once. Under 800 words total. Output only the guide, starting with "## GENERAL".`,
   });
   const text = r.text.slice(Math.max(0, r.text.indexOf("## GENERAL")));
   const sections = parseStrategy(text);
@@ -538,7 +564,7 @@ createServer(async (req, res) => {
       if (!g) return json(res, 404, { error: "Game not found (the server was restarted?)" });
       if (b.input) {
         if (!g.waiting) return json(res, 409, { error: "The game is not waiting for you right now." });
-        if (g.options && !g.options.some((o) => o === b.input.target)) {
+        if (g.options && !(g.canSkip && b.input.skip) && !g.options.some((o) => o === b.input.target)) {
           if (g.need !== "speak") return json(res, 400, { error: "That is not a valid choice." });
         }
         const r = g.resolve; g.waiting = false; g.resolve = null; g.options = null; g.need = null;

@@ -22,11 +22,12 @@
 - Keep a mental list of cleared players; a player you cleared is a good ally and a likely kill target for the wolves.
 
 ## DOCTOR
-- Protect the person the werewolves most want dead. If the seer is revealed, guard them. If not, guess the strongest reader or the loudest village voice.
-- Do not protect the same person twice in a row (rule). Vary your choices; wolves will notice a pattern.
-- Keep your role secret. If you reveal, you become the next night's target. Only reveal if it saves the game.
-- Notice a night with no death: either you saved someone or the wolves missed. Use it carefully, you may know who the wolves wanted.
-- Protecting yourself is allowed and sometimes right when you are suspected.
+- You have ONE healing potion for the whole game. Each night you are told who the werewolves chose to kill, and you decide whether to spend the potion on that player. After it is used, you only talk and vote.
+- The potion is most valuable on a power role (the seer) or on a player who is clearly leading the village to the werewolves. Saving a nobody on night 1 wastes it.
+- Waiting has a price: a night with no death only happens when you use it, and a late save can come too late. If the victim is the confirmed seer or a clear village leader, use it.
+- Keep your role secret. If you reveal, you become the next night's target. Only reveal if it saves the game, or once the potion is gone and you can help by sharing what you know.
+- A saved player will see nobody died. Listen to how people react to "nobody died": the werewolves know their kill failed and may overreact.
+- You may save yourself if you are the victim.
 
 ## VILLAGER
 - You have no power, only your brain, so your vote is the weapon. Ask questions that force specific answers.

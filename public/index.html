@@ -323,7 +323,7 @@ function addSay(ev) {
   chatAdd(`${avEl(p, "sm")}<div class="b"><div class="who">${esc(ev.who)}<span>${esc(p.title)} · ${t("dayRound", ev.day, ev.round)}${tags ? " · " + esc(tags) : ""}</span></div><div class="tx">${esc(ev.text)}</div></div>`, "m");
   document.querySelectorAll(".seat").forEach((s) => s.classList.remove("thinking"));
 }
-const addVote = (ev) => chatAdd(`🗳 ${esc(ev.who)} → <b>${esc(ev.target)}</b>`, "vt");
+const addVote = (ev) => chatAdd(`🗳 ${esc(ev.who)} → <b>${ev.target ? esc(ev.target) : t("abstain")}</b>`, "vt");
 const addDeath = (ev) => chatAdd(`☠ ${esc(ev.who)} ${ev.cause === "wolves" ? t("killed") : t("eliminated")}${ev.role ? ` — ${ROLE_ICON[ev.role]} ${rname(ev.role)}` : ""}`, "death");
 
 // ---------------- what you can do ----------------
@@ -340,8 +340,9 @@ function showNeed(ev) {
     $("send").onclick = () => send(false); $("pass").onclick = () => send(true);
     $("say").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(false); } };
   } else {
-    act.innerHTML = `<b>${esc(ev.label)}</b>${ev.hint ? `<div style="color:var(--muted);font-size:14px">${esc(ev.hint)}</div>` : ""}<div class="opts">${optBtns(ev.options)}</div>`;
+    act.innerHTML = `<b>${esc(ev.label)}</b>${ev.hint ? `<div style="color:var(--muted);font-size:14px">${esc(ev.hint)}</div>` : ""}<div class="opts">${optBtns(ev.options)}${ev.skipLabel ? `<button class="ghost" id="skipOpt">${esc(ev.skipLabel)}</button>` : ""}</div>`;
     act.querySelectorAll(".opt").forEach((b) => b.onclick = () => step({ target: b.dataset.n }));
+    if (ev.skipLabel) $("skipOpt").onclick = () => step({ skip: true });
   }
   act.scrollIntoView({ block: "nearest" });
 }
@@ -408,7 +409,7 @@ function renderNotes() {
   const { P, votes, flags, mine } = buildNotes();
   const nb = $("nb");
   if (tab === "players") {
-    const lst = (a) => a.map((x) => `${esc(x.who)} <small>(${LANG === "zh" ? "天" : "d"}${x.day})</small>`).join(", ") || "—";
+    const lst = (a) => a.map((x) => `${x.who ? esc(x.who) : t("abstain")} <small>(${LANG === "zh" ? "天" : "d"}${x.day})</small>`).join(", ") || "—";
     nb.innerHTML = (mine.length ? `<h3>${t("privateInfo")}</h3>${mine.map((m) => `<div class="priv" style="margin-bottom:4px">${esc(m)}</div>`).join("")}` : "") + `<h3>${t("players")}</h3>` +
       Object.entries(P).map(([n, p]) => {
         const d = p.dead;
@@ -422,7 +423,7 @@ function renderNotes() {
   } else if (tab === "votes") {
     const days = Object.keys(votes);
     nb.innerHTML = days.length ? `<h3>${t("whoVoted")}</h3><table><tr><th></th>${days.map((d) => `<th>${t("day", d)}</th>`).join("")}</tr>` +
-      Object.keys(P).map((n) => `<tr><td style="text-align:left"><b>${esc(n)}</b></td>${days.map((d) => { const x = votes[d][n]; return `<td class="${x && x === YOU?.name ? "hit" : ""}">${x ? esc(x) : "·"}</td>`; }).join("")}</tr>`).join("") + `</table><p style="color:var(--muted);font-size:12px">${t("votesHint")}</p>` : `<p>${t("noVotes")}</p>`;
+      Object.keys(P).map((n) => `<tr><td style="text-align:left"><b>${esc(n)}</b></td>${days.map((d) => { const has = n in (votes[d] || {}), x = votes[d][n]; return `<td class="${x && x === YOU?.name ? "hit" : ""}">${x ? esc(x) : has ? "—" : "·"}</td>`; }).join("")}</tr>`).join("") + `</table><p style="color:var(--muted);font-size:12px">${t("votesHint")}</p>` : `<p>${t("noVotes")}</p>`;
   } else if (tab === "cost") {
     nb.innerHTML = costHtml();
   } else if (tab === "flags") {
@@ -450,7 +451,7 @@ const renderAll = () => { drawSeats(); renderNotes(); };
 
 function exportMd() {
   const { P, votes, flags, mine } = buildNotes();
-  const lst = (a) => a.map((x) => `${x.who} (${x.day})`).join(", ") || t("none");
+  const lst = (a) => a.map((x) => `${x.who || t("abstain")} (${x.day})`).join(", ") || t("none");
   const L = [t("exTitle", GID), "", t("exYou", YOU.name, rname(YOU.role), over ? (over.winner === "village" ? t("winnerVillage") : t("winnerWolves")) : ""), ""];
   if (over) L.push(t("exRoles"), ...Object.entries(over.roles).map(([n, r]) => `- ${n}: ${rname(r)}`), "");
   if (mine.length) L.push(t("exPrivate"), ...mine.map((m) => `- ${m}`), "");
@@ -458,13 +459,13 @@ function exportMd() {
   Object.entries(P).forEach(([n, p]) => L.push(`### ${n}${p.dead ? ` (${t("diedAt", p.dead.day, p.dead.role ? rname(p.dead.role) : "")})` : ""}`,
     `- ${t("exClaims")}: ${p.claims.map((c) => `${rname(c.role)} (${c.day})`).join(", ") || t("none")}`, `- ${t("exSusp")}: ${lst(p.suspects)}`, `- ${t("exTrust")}: ${lst(p.trusts)}`, `- ${t("exVoted")}: ${lst(p.votes)}`, ""));
   const days = Object.keys(votes);
-  if (days.length) L.push(t("exVote"), "", `| | ${days.map((d) => t("day", d)).join(" | ")} |`, `|---|${days.map(() => "---").join("|")}|`, ...Object.keys(P).map((n) => `| ${n} | ${days.map((d) => votes[d][n] || "").join(" | ")} |`), "");
+  if (days.length) L.push(t("exVote"), "", `| | ${days.map((d) => t("day", d)).join(" | ")} |`, `|---|${days.map(() => "---").join("|")}|`, ...Object.keys(P).map((n) => `| ${n} | ${days.map((d) => (n in (votes[d] || {}) ? votes[d][n] || t("abstain") : "")).join(" | ")} |`), "");
   if (flags.length) L.push(t("exFlags"), ...flags.map((f) => `- ${f}`), "");
   if (COST) L.push(t("exCost"), `$${COST.total.toFixed(4)}, ${COST.calls} calls, ${(COST.tokens / 1000).toFixed(1)}k tokens`, "", ...Object.entries(COST.ledger.who).map(([n, r]) => `- ${n}: $${r.cost.toFixed(4)} (${r.calls})`), "");
   const my = store.get("ww-notes-" + GID, ""); if (my) L.push(t("exMine"), my, "");
   if (window.analysisText) L.push(t("exAI"), window.analysisText, "");
   L.push(t("exTranscript"), "");
-  EV.forEach((e) => { if (e.type === "say") L.push(`**${e.who}** (${t("dayRound", e.day, e.round)}): ${e.text}`); else if (e.type === "narrate") L.push(`*${e.text}*`); else if (e.type === "vote") L.push(`- ${e.who} → ${e.target}`); else if (e.type === "death") L.push(`**☠ ${e.who}**${e.role ? " (" + rname(e.role) + ")" : ""}`); else if (e.type === "private") L.push(`> ${e.text}`); });
+  EV.forEach((e) => { if (e.type === "say") L.push(`**${e.who}** (${t("dayRound", e.day, e.round)}): ${e.text}`); else if (e.type === "narrate") L.push(`*${e.text}*`); else if (e.type === "vote") L.push(`- ${e.who} → ${e.target || t("abstain")}`); else if (e.type === "death") L.push(`**☠ ${e.who}**${e.role ? " (" + rname(e.role) + ")" : ""}`); else if (e.type === "private") L.push(`> ${e.text}`); });
   if (over) L.push("", t("exThoughts"), ...over.thoughts.map((x) => `- ${t("day", x.day)} ${x.who} (${x.task}): ${x.thought}`));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([L.join("\n")], { type: "text/markdown" }));
