@@ -1,0 +1,6 @@
+.env
+games/
+node_modules/
+.DS_Store
+cost-log.jsonl
+.cache/

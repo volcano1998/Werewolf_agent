@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Werewolf</title>
+<style>
+  :root { --bg:#f6f1e9; --card:#fffdf9; --ink:#2a2420; --muted:#7b7068; --line:#e4dccf; --accent:#b8432f; --gold:#c8922a; --night:#12162b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17151a; --card:#211e26; --ink:#f0eaf2; --muted:#a39bab; --line:#37323f; --accent:#e0644e; --gold:#e3b04b; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, sans-serif; transition:background .6s; }
+  body.night { background:var(--night); color:#e8e6f5; --card:#1b2040; --line:#2d3466; --muted:#9aa0cc; --bg:var(--night); }
+  main { max-width:1180px; margin:0 auto; padding:16px; }
+  h1 { margin:0; font-size:26px; } h2 { margin:0 0 8px; font-size:18px; } h3 { margin:12px 0 4px; font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:9px 16px; font:inherit; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:500; }
+  button:disabled { opacity:.5; cursor:default; }
+  input[type=text], select, textarea { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; }
+  textarea { resize:vertical; min-height:70px; }
+  [hidden] { display:none !important; }
+  .top { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .top .grow { flex:1; } .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:2px 12px; font-size:14px; }
+  /* lobby */
+  .roster { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
+  .pc { display:flex; gap:10px; align-items:flex-start; border:2px solid var(--line); border-radius:10px; padding:10px; cursor:pointer; background:var(--card); }
+  .pc.on { border-color:var(--accent); } .pc .av { flex:none; }
+  .pc small { color:var(--muted); display:block; line-height:1.3; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; margin:10px 0; } .row > div { flex:1; min-width:140px; }
+  label { display:block; font-weight:600; font-size:14px; margin-bottom:3px; }
+  /* avatars */
+  .av { width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; border:3px solid transparent; position:relative; flex:none; }
+  .av.sm { width:36px; height:36px; font-size:20px; border-width:2px; }
+  /* table */
+  .table { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .seat { width:104px; text-align:center; font-size:13px; line-height:1.2; padding:6px 2px; border-radius:10px; position:relative; }
+  .seat .av { margin:0 auto 4px; }
+  .seat.dead { opacity:.45; filter:grayscale(1); } .seat.dead .nm { text-decoration:line-through; }
+  .seat.speaking .av { border-color:var(--gold); box-shadow:0 0 0 4px rgba(200,146,42,.35); animation:pulse 1s infinite alternate; }
+  .seat.thinking .av::after { content:"…"; position:absolute; right:-6px; top:-8px; background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:0 6px; font-weight:700; }
+  .seat.me .nm { color:var(--gold); font-weight:700; }
+  .seat .tag { display:inline-block; font-size:11px; background:var(--accent); color:#fff; border-radius:8px; padding:0 6px; margin-top:2px; }
+  .seat .tag.good { background:#2f7d4f; }
+  @keyframes pulse { to { box-shadow:0 0 0 8px rgba(200,146,42,.15); } }
+  /* layout */
+  .cols { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr); gap:12px; align-items:start; }
+  @media (max-width:900px) { .cols { grid-template-columns:1fr; } }
+  .chat { height:min(52vh,520px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px; }
+  .m { display:flex; gap:8px; align-items:flex-start; } .m .b { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:6px 10px; flex:1; min-width:0; }
+  .m .who { font-weight:700; font-size:13px; } .m .who span { color:var(--muted); font-weight:400; margin-left:6px; }
+  .m .tx { white-space:pre-wrap; }
+  .nar { text-align:center; color:var(--muted); font-style:italic; font-size:14px; padding:2px 0; }
+  .priv { background:rgba(200,146,42,.15); border:1px dashed var(--gold); border-radius:8px; padding:4px 10px; font-size:14px; }
+  .death { text-align:center; font-weight:700; color:var(--accent); }
+  .vt { font-size:13px; color:var(--muted); text-align:center; }
+  .act { position:sticky; bottom:8px; }
+  .opts { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .opt { display:flex; align-items:center; gap:6px; background:var(--bg); color:var(--ink); border:2px solid var(--line); padding:4px 12px 4px 4px; border-radius:999px; }
+  .opt:hover { border-color:var(--accent); }
+  /* notebook */
+  .tabs { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; } .tabs button { padding:5px 10px; font-size:13px; }
+  .tabs button.on { background:var(--accent); color:#fff; } .tabs button:not(.on) { background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .nb { max-height:70vh; overflow-y:auto; font-size:14px; }
+  .pn { border:1px solid var(--line); border-radius:8px; padding:6px 8px; margin-bottom:6px; } .pn.dead { opacity:.6; }
+  .pn b { font-size:14px; } .pn div { color:var(--muted); font-size:13px; } .pn div span { color:var(--ink); }
+  table { border-collapse:collapse; width:100%; font-size:12px; } th, td { border:1px solid var(--line); padding:3px 5px; text-align:center; } td.hit { background:rgba(184,67,47,.25); font-weight:700; }
+  .flag { border-left:3px solid var(--gold); padding:2px 8px; margin:6px 0; }
+  .over { text-align:center; } .over h2 { font-size:24px; }
+  .thought { font-size:13px; border-bottom:1px solid var(--line); padding:3px 0; } .thought b { font-weight:700; }
+  pre.an { white-space:pre-wrap; font:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .err { color:var(--accent); font-weight:600; }
+  .stage { position:relative; }
+  #dark { position:absolute; inset:0; z-index:5; background:rgba(4,6,20,.94); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; color:#e8e6f5; transition:opacity 1.2s; }
+  #dark .moon { font-size:84px; filter:drop-shadow(0 0 24px rgba(255,240,180,.5)); animation:float 4s ease-in-out infinite alternate; }
+  #dark #darkTxt { font-size:22px; font-style:italic; max-width:460px; line-height:1.35; }
+  @keyframes float { to { transform:translateY(-10px); } }
+  .act { z-index:10; }
+  .ident { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:10px 0; }
+  .total { font-weight:700; }
+  .tierinfo { color:var(--muted); font-size:13px; margin:2px 0 0; }
+  .lang { width:auto; padding:5px 8px; }
+  pre.guide { white-space:pre-wrap; font:13px/1.45 system-ui,sans-serif; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; max-height:320px; overflow:auto; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1 data-i18n="title"></h1>
+    <span class="pill" id="phase" hidden></span>
+    <span class="pill" id="me" hidden></span>
+    <span class="grow"></span>
+    <span class="pill" id="cost" hidden></span>
+    <select id="lang" class="lang" aria-label="Language"><option value="en">English</option><option value="zh">中文</option></select>
+    <button class="ghost" id="musicBtn"></button>
+    <button class="ghost" id="voiceBtn"></button>
+    <button class="ghost" id="skipBtn" hidden data-i18n="skip"></button>
+  </div>
+
+  <!-- LOBBY -->
+  <section id="lobby">
+    <div class="card">
+      <h2 data-i18n="pickTable"></h2>
+      <p style="color:var(--muted);margin:0 0 8px" data-i18n="pickIntro"></p>
+      <div class="roster" id="roster"></div>
+      <div class="row">
+        <div style="min-width:100%;margin:0"><h3 style="margin:4px 0" data-i18n="who"></h3></div>
+        <div><label for="myName" data-i18n="yourName"></label><input type="text" id="myName" maxlength="16"></div>
+        <div style="max-width:120px"><label for="myAv" data-i18n="avatar"></label><select id="myAv"></select></div>
+        <div><label for="myTitle" data-i18n="village"></label><select id="myTitle"></select></div>
+        <div><label for="myRole" data-i18n="secretRole"></label><select id="myRole"></select></div>
+        <div style="min-width:100%;margin:0"><h3 style="margin:4px 0" data-i18n="settings"></h3></div>
+        <div style="max-width:210px"><label for="rounds" data-i18n="rounds"></label><select id="rounds"><option>1</option><option selected>2</option><option>3</option></select></div>
+        <div style="max-width:200px"><label for="reveal" data-i18n="whenDies"></label><select id="reveal"></select></div>
+        <div><label for="tier" data-i18n="brain"></label><select id="tier"></select><p class="tierinfo" id="tierInfo"></p></div>
+      </div>
+      <p style="color:var(--muted);margin:0 0 6px;font-size:14px" data-i18n="brainHelp"></p>
+      <div class="row" style="align-items:center;margin:6px 0">
+        <div style="flex:3"><b data-i18n="study"></b><div id="stratInfo" style="color:var(--muted);font-size:14px"></div></div>
+        <div style="flex:none"><button class="ghost" id="studyBtn"></button> <button class="ghost" id="viewBtn"></button> <button class="ghost" id="resetBtn" hidden></button></div>
+      </div>
+      <pre class="guide" id="stratText" hidden></pre>
+      <div class="row"><div style="max-width:200px"><button id="start" style="width:100%"></button></div></div>
+      <p id="lobbyErr" class="err" hidden></p>
+      <p id="lobbyInfo" style="color:var(--muted);margin:0;font-size:14px"></p>
+      <p id="lobbyTotal" style="color:var(--muted);margin:2px 0 0;font-size:14px"></p>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" hidden>
+    <div class="cols">
+      <div>
+        <div class="stage" id="stage">
+          <div id="dark" hidden><div class="moon">🌙</div><div id="darkTxt"></div></div>
+          <div class="card"><div class="table" id="seats"></div></div>
+          <div class="card"><div class="chat" id="chat"></div></div>
+        </div>
+        <div class="card act" id="act" hidden></div>
+        <div class="card over" id="overBox" hidden></div>
+      </div>
+      <div class="card">
+        <div class="tabs" id="tabs"></div>
+        <div class="nb" id="nb"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="/i18n.js"></script>
+<script>
+let CFG = null, COST = null, GID = null, GLANG = "en", EV = [], PL = {}, YOU = null, seq = 0, tab = "players", busy = false, over = null, strat = null;
+const rname = (r) => t("role_" + r);
+
+// ---------------- language ----------------
+const AVATARS = ["🙂", "😎", "🦊", "🐼", "🐸", "🦉", "🧙", "👻", "🐯", "🦄"];
+const TITLES = { en: ["The Newcomer", "The Traveler", "The Baker", "The Blacksmith", "The Teacher", "The Fisher", "The Poet", "The Stranger", "The Gardener", "The Innkeeper"], zh: ["新来的人", "旅行者", "面包师", "铁匠", "教师", "渔夫", "诗人", "陌生人", "园丁", "旅店老板"] };
+function applyLang() {
+  document.documentElement.lang = LANG; $("lang").value = LANG;
+  document.querySelectorAll("[data-i18n]").forEach((el) => el.textContent = t(el.dataset.i18n));
+  $("myName").placeholder = t("namePh");
+  $("musicBtn").title = t("musicTip"); $("voiceBtn").title = t("voiceTip");
+  const keepT = $("myTitle").selectedIndex, keepR = $("myRole").value, keepV = $("reveal").value, keepTier = $("tier").value;
+  $("myTitle").innerHTML = TITLES[LANG].map((x) => `<option>${x}</option>`).join(""); $("myTitle").selectedIndex = Math.max(0, keepT);
+  $("myRole").innerHTML = `<option value="">${t("random")}</option>` + ["werewolf", "seer", "doctor", "villager"].map((r) => `<option value="${r}">${ROLE_ICON[r]} ${rname(r)}</option>`).join(""); $("myRole").value = keepR;
+  $("reveal").innerHTML = `<option value="1">${t("reveal")}</option><option value="0">${t("keepSecret")}</option>`; $("reveal").value = keepV || "1";
+  if (CFG) { drawTiers(keepTier); drawRoster(); drawStrategy(); }
+  if (CFG?.allTime?.games) $("lobbyTotal").textContent = t("allGames", CFG.allTime.cost, CFG.allTime.games);
+  if (CFG && !CFG.hasKey) $("lobbyInfo").textContent = t("noKey");
+  Music.paint(); paintVoice(); paintCost();
+  $("start").textContent = chosen.size === 6 ? t("start") : t("pickMore", 6 - chosen.size);
+  if (GID) { $("me").textContent = YOU ? t("youAre", YOU.role) : ""; renderNotes(); }
+}
+$("lang").onchange = () => { LANG = $("lang").value; store.set("ww-lang", LANG); applyLang(); };
+
+// ---------------- lobby ----------------
+$("myAv").innerHTML = AVATARS.map((a) => `<option>${a}</option>`).join("");
+const savedName = store.get("ww-name", ""); $("myName").value = /^(me|you|player|我)?$/i.test(savedName) ? "" : savedName;
+$("myAv").value = store.get("ww-av", "🙂"); $("myRole").value = store.get("ww-role", "");
+let chosen = new Set();
+const avEl = (p, cls = "") => `<div class="av ${cls}" style="background:${p.color}33;border-color:${p.color}">${p.avatar}</div>`;
+const rName = (r) => (LANG === "zh" ? r.nameZh : r.name), rTitle = (r) => (LANG === "zh" ? r.titleZh : r.title), rStyle = (r) => (LANG === "zh" ? r.styleZh : r.style);
+
+fetch("/api/config").then((r) => r.json()).then((c) => {
+  CFG = c;
+  const saved = store.get("ww-roster", null);
+  chosen = new Set(saved && saved.length === 6 ? saved : c.roster.map((r) => r.id).sort(() => Math.random() - 0.5).slice(0, 6));
+  $("tier").value = store.get("ww-tier", c.defaultTier);
+  applyLang(); drawTiers(store.get("ww-tier", c.defaultTier));
+  $("lobbyInfo").textContent = c.hasKey ? "" : t("noKey");
+  loadStrategy(); resume();
+});
+function drawTiers(sel) {
+  $("tier").innerHTML = CFG.tiers.map((x) => `<option value="${x.id}">${t("tier_" + x.id)}</option>`).join("");
+  $("tier").value = CFG.tiers.some((x) => x.id === sel) ? sel : CFG.defaultTier; tierInfo();
+}
+function tierInfo() { const x = CFG.tiers.find((y) => y.id === $("tier").value); $("tierInfo").textContent = x ? t("tierInfo", x.model, x.estimate) : ""; }
+$("tier").onchange = () => { store.set("ww-tier", $("tier").value); tierInfo(); };
+function drawRoster() {
+  $("roster").innerHTML = CFG.roster.map((r) => `<div class="pc ${chosen.has(r.id) ? "on" : ""}" data-id="${r.id}">${avEl(r)}<div><b>${esc(rName(r))}</b> · ${esc(rTitle(r))}<small>${esc(rStyle(r))}</small></div></div>`).join("");
+  $("roster").querySelectorAll(".pc").forEach((el) => el.onclick = () => {
+    const id = el.dataset.id;
+    if (chosen.has(id)) chosen.delete(id); else if (chosen.size < 6) chosen.add(id);
+    drawRoster();
+  });
+  $("start").disabled = chosen.size !== 6;
+  $("start").textContent = chosen.size === 6 ? t("start") : t("pickMore", 6 - chosen.size);
+}
+// ---- the strategy the players studied ----
+async function loadStrategy() { strat = await (await fetch("/api/strategy")).json(); drawStrategy(); }
+function drawStrategy() {
+  if (!strat) return;
+  $("stratInfo").textContent = strat.source === "web" ? t("studyWeb", strat.updated) : t("studyBuilt");
+  $("studyBtn").textContent = t("studyBtn"); $("viewBtn").textContent = $("stratText").hidden ? t("viewBtn") : t("hideBtn"); $("resetBtn").textContent = t("resetBtn");
+  $("resetBtn").hidden = strat.source !== "web"; $("stratText").textContent = strat.text.replace(/<!--.*?-->\n?/, "");
+}
+$("viewBtn").onclick = () => { $("stratText").hidden = !$("stratText").hidden; drawStrategy(); };
+$("studyBtn").onclick = async () => {
+  $("studyBtn").disabled = true; $("stratInfo").textContent = t("studying");
+  try {
+    const r = await fetch("/api/study", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    strat = j; drawStrategy(); $("stratInfo").textContent += " " + t("studyDone", j.cost);
+  } catch (e) { $("stratInfo").textContent = e.message; }
+  $("studyBtn").disabled = false;
+};
+$("resetBtn").onclick = async () => { strat = await (await fetch("/api/study", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reset: true }) })).json(); drawStrategy(); };
+
+$("start").onclick = async () => {
+  const nm = $("myName").value.trim();
+  if (!nm || /^(me|you|player|i|我)$/i.test(nm)) { $("lobbyErr").textContent = t("nameErr"); $("lobbyErr").hidden = false; $("myName").focus(); return; }
+  store.set("ww-roster", [...chosen]); store.set("ww-name", nm); store.set("ww-av", $("myAv").value); store.set("ww-role", $("myRole").value); store.set("ww-tier", $("tier").value);
+  $("lobbyErr").hidden = true;
+  const r = await fetch("/api/new", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: nm, avatar: $("myAv").value, title: $("myTitle").value, role: $("myRole").value, roster: [...chosen], rounds: Number($("rounds").value), reveal: $("reveal").value === "1", lang: LANG, tier: $("tier").value }) });
+  const j = await r.json();
+  if (!r.ok) { $("lobbyErr").textContent = j.error; $("lobbyErr").hidden = false; return; }
+  newGameUI(j.id);
+  voiceUnlock(); Music.init();
+  step(null);
+};
+function newGameUI(id) {
+  GID = id; COST = null; EV = []; PL = {}; YOU = null; seq = 0; over = null; queue.length = 0; GLANG = LANG;
+  store.set("ww-game", id);
+  $("lobby").hidden = true; $("game").hidden = false; $("chat").innerHTML = ""; $("overBox").hidden = true; $("act").hidden = true;
+  $("phase").hidden = $("me").hidden = $("cost").hidden = false; paintCost();
+  document.body.classList.remove("night"); tab = "players"; renderAll();
+}
+function backToLobby() { store.set("ww-game", null); GID = null; stopSpeech(); Music.play(null); $("dark").hidden = true; $("lobby").hidden = false; $("game").hidden = true; ["phase", "me", "cost"].forEach((i) => $(i).hidden = true); document.body.classList.remove("night"); }
+
+// ---------------- talking to the server ----------------
+async function step(input) {
+  busy = true; $("act").hidden = true;
+  try {
+    const res = await fetch("/api/step", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: GID, since: seq, input }) });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || "Server error"); }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) { const ev = JSON.parse(buf.slice(0, i)); buf = buf.slice(i + 1); seq++; queue.push(ev); pump(); }
+    }
+  } catch (e) { queue.push({ type: "error", error: e.message }); pump(); }
+  busy = false;
+}
+async function resume() {
+  const id = store.get("ww-game", null);
+  if (!id) return;
+  const r = await fetch("/api/history?id=" + id);
+  if (!r.ok) { store.set("ww-game", null); return; }
+  const h = await r.json();
+  newGameUI(id);
+  for (const ev of h.events) { seq++; handle(ev, false); }
+  if (!h.over && !h.waiting) step(null);
+}
+
+// ---------------- event queue: events appear one at a time, in step with the voices ----------------
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const queue = []; let pumping = false;
+async function pump() {
+  if (pumping) return; pumping = true;
+  while (queue.length) { const ev = queue.shift(); await handle(ev, true); }
+  pumping = false;
+}
+async function handle(ev, live) {
+  EV.push(ev);
+  switch (ev.type) {
+    case "start": YOU = ev.you; GLANG = ev.lang || GLANG; setPlayers(ev.players); $("me").textContent = t("youAre", ev.you.role); addPrivate(`${ROLE_ICON[ev.you.role]} ${rname(ev.you.role)}${ev.you.partner ? ` · 🐺 ${ev.you.partner}` : ""}`); break;
+    case "state": setPlayers(ev.players); break;
+    case "phase":
+      $("phase").textContent = ev.phase === "night" ? t("night", ev.day) : ev.phase === "vote" ? t("voteLabel", ev.day) : t("day", ev.day);
+      document.body.classList.toggle("night", ev.phase === "night");
+      $("dark").hidden = ev.phase !== "night"; if (ev.phase === "night") $("darkTxt").textContent = "";
+      if (live) Music.play(ev.phase === "night" ? "night" : ev.phase === "vote" ? "vote" : "day");
+      break;
+    case "narrate": addNarr(ev.text); if (!$("dark").hidden) $("darkTxt").textContent = ev.text; if (live) await Promise.all([speak(ev.text, null), wait(ev.beat || 0)]); break;
+    case "private": addPrivate(ev.text); break;
+    case "thinking": document.querySelectorAll(".seat").forEach((s) => s.classList.toggle("thinking", s.dataset.n === ev.who)); break;
+    case "say": addSay(ev); if (live) { mark(ev.who, "speaking", true); await speak(ev.text, ev.who); mark(ev.who, "speaking", false); } break;
+    case "vote": addVote(ev); break;
+    case "death": addDeath(ev); if (live) Music.gong(); break;
+    case "cost": COST = ev; paintCost(); if (tab === "cost") renderNotes(); break;
+    case "need": showNeed(ev); break;
+    case "over": over = ev; $("dark").hidden = true; showOver(ev); if (live) Music.play(ev.youWon ? "win" : "lose"); break;
+    case "error": addNarr("⚠ " + ev.error, true); $("act").hidden = false; $("act").innerHTML = `<span class="err">${esc(ev.error)}</span> <button id="again">${t("backLobby")}</button>`; $("again").onclick = backToLobby; break;
+  }
+  if (ev.type !== "cost" && ev.type !== "thinking") renderNotes();
+}
+function paintCost() { $("cost").textContent = t("costPill", COST?.total || 0, COST?.calls || 0); $("cost").title = t("costTip"); }
+$("cost").onclick = () => { tab = "cost"; renderNotes(); $("nb").scrollIntoView({ block: "nearest" }); };
+$("cost").style.cursor = "pointer";
+function setPlayers(list) { list.forEach((p) => PL[p.name] = p); drawSeats(); }
+function mark(name, cls, on) { document.querySelectorAll(".seat").forEach((s) => { if (s.dataset.n === name) s.classList.toggle(cls, on); }); }
+function drawSeats() {
+  $("seats").innerHTML = Object.values(PL).map((p) => `<div class="seat ${p.alive ? "" : "dead"} ${p.human ? "me" : ""}" data-n="${esc(p.name)}">${avEl(p)}<div class="nm">${esc(p.name)}${p.human ? " " + t("youTag") : ""}</div><div style="color:var(--muted)">${esc(p.title)}</div>${YOU?.partner === p.name ? `<span class="tag">${t("partnerBadge")}</span>` : ""}${p.role ? `<span class="tag ${p.role === "werewolf" ? "" : "good"}">${ROLE_ICON[p.role]} ${rname(p.role)}</span>` : ""}</div>`).join("");
+}
+function chatAdd(html, cls = "") { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; $("chat").append(d); $("chat").scrollTop = $("chat").scrollHeight; return d; }
+const addNarr = (x, err) => chatAdd(esc(x), "nar" + (err ? " err" : ""));
+const addPrivate = (x) => chatAdd(`🔒 ${esc(x)} <small>(${t("private")})</small>`, "priv");
+function addSay(ev) {
+  const p = PL[ev.who] || { avatar: "?", color: "#888", title: "" };
+  const tags = [ev.claim ? t("claimsTag", rname(ev.claim)) : "", ev.suspect ? t("suspectsTag", ev.suspect) : ""].filter(Boolean).join(" · ");
+  chatAdd(`${avEl(p, "sm")}<div class="b"><div class="who">${esc(ev.who)}<span>${esc(p.title)} · ${t("dayRound", ev.day, ev.round)}${tags ? " · " + esc(tags) : ""}</span></div><div class="tx">${esc(ev.text)}</div></div>`, "m");
+  document.querySelectorAll(".seat").forEach((s) => s.classList.remove("thinking"));
+}
+const addVote = (ev) => chatAdd(`🗳 ${esc(ev.who)} → <b>${esc(ev.target)}</b>`, "vt");
+const addDeath = (ev) => chatAdd(`☠ ${esc(ev.who)} ${ev.cause === "wolves" ? t("killed") : t("eliminated")}${ev.role ? ` — ${ROLE_ICON[ev.role]} ${rname(ev.role)}` : ""}`, "death");
+
+// ---------------- what you can do ----------------
+function showNeed(ev) {
+  const act = $("act"); act.hidden = false;
+  const optBtns = (names) => names.map((n) => `<button class="opt" data-n="${esc(n)}">${avEl(PL[n], "sm")}${esc(n)}</button>`).join("");
+  if (ev.kind === "speak") {
+    act.innerHTML = `<b>${t("yourTurn")}</b> <span style="color:var(--muted)">${t("roundOf", ev.day, ev.round, ev.rounds)}</span>
+      <textarea id="say" placeholder="${esc(t("sayPh"))}"></textarea>
+      <div class="row" style="margin-bottom:0"><div><label for="sus">${t("suspectQ")}</label><select id="sus"><option value="">${t("nobodyYet")}</option>${ev.options.map((o) => `<option>${esc(o)}</option>`).join("")}</select></div>
+      <div style="flex:none"><button id="pass" class="ghost">${t("pass")}</button> <button id="send">${t("sayIt")}</button></div></div>`;
+    $("say").focus();
+    const send = (pass) => { const text = pass ? "" : $("say").value.trim(); step({ text, suspect: $("sus").value }); };
+    $("send").onclick = () => send(false); $("pass").onclick = () => send(true);
+    $("say").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(false); } };
+  } else {
+    act.innerHTML = `<b>${esc(ev.label)}</b>${ev.hint ? `<div style="color:var(--muted);font-size:14px">${esc(ev.hint)}</div>` : ""}<div class="opts">${optBtns(ev.options)}</div>`;
+    act.querySelectorAll(".opt").forEach((b) => b.onclick = () => step({ target: b.dataset.n }));
+  }
+  act.scrollIntoView({ block: "nearest" });
+}
+function showOver(ev) {
+  $("act").hidden = true; document.body.classList.remove("night");
+  const box = $("overBox"); box.hidden = false;
+  const roles = Object.entries(ev.roles).map(([n, r]) => `<span class="pill">${esc(n)}: ${ROLE_ICON[r]} ${rname(r)}</span>`).join(" ");
+  box.innerHTML = `<h2>${ev.youWon ? t("youWin") : t("youLose")} — ${ev.winner === "village" ? t("villageWins") : t("wolvesWin")}</h2>
+    <p>${roles}</p>
+    <p style="color:var(--muted)">${t("overStats", ev.calls, ev.cost)}</p>
+    <p><button id="exp">${t("exportBtn")}</button> <button id="ana" class="ghost">${t("analyze")}</button> <button id="ng" class="ghost">${t("newGame")}</button></p>
+    <div id="anaOut"></div>
+    <details style="text-align:left"><summary>${t("thoughts")}</summary>${ev.thoughts.map((x) => `<div class="thought"><b>${t("day", x.day)} ${esc(x.who)}</b> (${esc(x.task)}): ${esc(x.thought)}</div>`).join("")}</details>`;
+  $("exp").onclick = exportMd; $("ng").onclick = backToLobby;
+  $("ana").onclick = async () => {
+    $("ana").disabled = true; $("anaOut").innerHTML = `<p>${t("analyzing")}</p>`;
+    const r = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: GID }) });
+    const j = await r.json();
+    $("anaOut").innerHTML = r.ok ? `<pre class="an">${esc(j.text)}</pre><p style="color:var(--muted)">${t("analysisCost", j.cost)}</p>` : `<p class="err">${esc(j.error)}</p>`;
+    window.analysisText = j.text;
+    if (r.ok) { COST = { ...COST, total: j.total, calls: j.calls, tokens: j.tokens, ledger: j.ledger }; paintCost(); renderNotes(); }
+    $("ana").disabled = false;
+  };
+  box.scrollIntoView({ block: "nearest" });
+}
+
+// ---------------- automatic notetaker: everything is derived from the game events ----------------
+function buildNotes() {
+  const P = {}, votes = {}, flags = [], mine = [];
+  const get = (n) => (P[n] ||= { claims: [], suspects: [], trusts: [], votes: [], accusedBy: [], said: 0, dead: null });
+  for (const e of EV) {
+    if (e.type === "start") e.players.forEach((p) => get(p.name));
+    else if (e.type === "private") mine.push(e.text);
+    else if (e.type === "say") {
+      const p = get(e.who); p.said++;
+      if (e.claim) p.claims.push({ day: e.day, role: e.claim });
+      if (e.suspect) { p.suspects.push({ day: e.day, who: e.suspect }); get(e.suspect).accusedBy.push({ day: e.day, who: e.who }); }
+      if (e.trust) p.trusts.push({ day: e.day, who: e.trust });
+    } else if (e.type === "vote") { get(e.who).votes.push({ day: e.day, who: e.target }); (votes[e.day] ||= {})[e.who] = e.target; }
+    else if (e.type === "death") get(e.who).dead = { day: e.day, role: e.role, cause: e.cause };
+  }
+  const byRole = {};
+  Object.entries(P).forEach(([n, p]) => { p.claims.forEach((c) => (byRole[c.role] ||= new Set()).add(n)); if (new Set(p.claims.map((c) => c.role)).size > 1) flags.push(t("flagChange", n, list(p.claims, (c) => `${rname(c.role)} (${t("day", c.day)})`))); });
+  ["seer", "doctor"].forEach((r) => { if (byRole[r]?.size > 1) flags.push(t("flagClash", [...byRole[r]].join(LANG === "zh" ? "和" : " & "), rname(r))); });
+  Object.entries(P).forEach(([n, p]) => {
+    if (!p.dead || !p.dead.role) return;
+    const against = Object.entries(P).filter(([, q]) => q.votes.some((v) => v.who === n)).map(([m]) => m);
+    const trusted = Object.entries(P).filter(([, q]) => q.trusts.some((x) => x.who === n)).map(([m]) => m);
+    if (p.dead.role === "werewolf") {
+      if (trusted.length) flags.push(t("flagWolfTrusted", n, trusted.join(", ")));
+      if (against.length) flags.push(t("flagWolfVoters", n, against.join(", ")));
+    } else if (p.dead.cause === "vote" && against.length) flags.push(t("flagVillagerOut", n, rname(p.dead.role), against.join(", ")));
+  });
+  const me = YOU?.name;
+  if (me && P[me]?.accusedBy.length) flags.push(t("flagSuspectedYou", [...new Set(P[me].accusedBy.map((a) => a.who))].join(", ")));
+  return { P, votes, flags, mine };
+}
+const TABS = ["players", "votes", "flags", "cost", "notes"];
+function renderNotes() {
+  if (!GID) return;
+  $("tabs").innerHTML = TABS.map((k) => `<button data-t="${k}" class="${tab === k ? "on" : ""}">${t("tab_" + k)}</button>`).join("") + ` <button class="ghost" id="expBtn" style="margin-left:auto">${t("export")}</button>`;
+  $("tabs").querySelectorAll("[data-t]").forEach((b) => b.onclick = () => { tab = b.dataset.t; renderNotes(); });
+  $("expBtn").onclick = exportMd;
+  const { P, votes, flags, mine } = buildNotes();
+  const nb = $("nb");
+  if (tab === "players") {
+    const lst = (a) => a.map((x) => `${esc(x.who)} <small>(${LANG === "zh" ? "天" : "d"}${x.day})</small>`).join(", ") || "—";
+    nb.innerHTML = (mine.length ? `<h3>${t("privateInfo")}</h3>${mine.map((m) => `<div class="priv" style="margin-bottom:4px">${esc(m)}</div>`).join("")}` : "") + `<h3>${t("players")}</h3>` +
+      Object.entries(P).map(([n, p]) => {
+        const d = p.dead;
+        return `<div class="pn ${d ? "dead" : ""}"><b>${esc(PL[n]?.avatar || "")} ${esc(n)}</b> ${d ? `<small>${t("died", d.day, d.role ? rname(d.role) : "")}</small>` : ""}
+          <div>${t("claims")}: <span>${p.claims.map((c) => `${rname(c.role)} (${LANG === "zh" ? "天" : "d"}${c.day})`).join(", ") || "—"}</span></div>
+          <div>${t("suspects")}: <span>${lst(p.suspects)}</span></div>
+          <div>${t("trusts")}: <span>${lst(p.trusts)}</span></div>
+          <div>${t("votedFor")}: <span>${lst(p.votes)}</span></div>
+          <div>${t("suspectedBy")}: <span>${lst(p.accusedBy)}</span></div></div>`;
+      }).join("");
+  } else if (tab === "votes") {
+    const days = Object.keys(votes);
+    nb.innerHTML = days.length ? `<h3>${t("whoVoted")}</h3><table><tr><th></th>${days.map((d) => `<th>${t("day", d)}</th>`).join("")}</tr>` +
+      Object.keys(P).map((n) => `<tr><td style="text-align:left"><b>${esc(n)}</b></td>${days.map((d) => { const x = votes[d][n]; return `<td class="${x && x === YOU?.name ? "hit" : ""}">${x ? esc(x) : "·"}</td>`; }).join("")}</tr>`).join("") + `</table><p style="color:var(--muted);font-size:12px">${t("votesHint")}</p>` : `<p>${t("noVotes")}</p>`;
+  } else if (tab === "cost") {
+    nb.innerHTML = costHtml();
+  } else if (tab === "flags") {
+    nb.innerHTML = flags.length ? flags.map((f) => `<div class="flag">${esc(f)}</div>`).join("") : `<p>${t("noFlags")}</p>`;
+  } else {
+    nb.innerHTML = `<h3>${t("ownNotes")}</h3><textarea id="myNotes" style="min-height:260px" placeholder="${esc(t("ownNotesPh"))}"></textarea>`;
+    $("myNotes").value = store.get("ww-notes-" + GID, ""); $("myNotes").oninput = () => store.set("ww-notes-" + GID, $("myNotes").value);
+  }
+}
+function costRows(obj, order) {
+  const keys = order || Object.keys(obj).sort((a, b) => obj[b].cost - obj[a].cost);
+  return keys.filter((k) => obj[k]).map((k) => `<tr><td style="text-align:left">${esc(k)}</td><td>${obj[k].calls}</td><td>${(obj[k].tokens / 1000).toFixed(1)}k</td><td style="text-align:right">$${obj[k].cost.toFixed(4)}</td></tr>`).join("");
+}
+function costHtml() {
+  if (!COST) return `<p>${t("noCalls")}</p>`;
+  const L = COST.ledger, head = `<tr><th></th><th>${t("cCalls")}</th><th>${t("cTokens")}</th><th>${t("cCost")}</th></tr>`;
+  const dayKeys = Object.keys(L.day).sort((a, b) => parseInt(a.slice(4)) - parseInt(b.slice(4)));
+  return `<h3>${t("costTotal")}</h3><p style="margin:0"><b style="font-size:20px">$${COST.total.toFixed(4)}</b> &nbsp;${t("costCalls", COST.calls, (COST.tokens / 1000).toFixed(1), COST.total / Math.max(1, COST.calls))}</p>
+  <h3>${t("byDay")}</h3><table>${head}${costRows(L.day, dayKeys)}</table>
+  <h3>${t("byPlayer")}</h3><table>${head}${costRows(L.who)}</table>
+  <h3>${t("byAction")}</h3><table>${head}${costRows(L.task)}</table>
+  <p style="color:var(--muted);font-size:12px">${t("costNote")}</p>`;
+}
+const renderAll = () => { drawSeats(); renderNotes(); };
+
+function exportMd() {
+  const { P, votes, flags, mine } = buildNotes();
+  const lst = (a) => a.map((x) => `${x.who} (${x.day})`).join(", ") || t("none");
+  const L = [t("exTitle", GID), "", t("exYou", YOU.name, rname(YOU.role), over ? (over.winner === "village" ? t("winnerVillage") : t("winnerWolves")) : ""), ""];
+  if (over) L.push(t("exRoles"), ...Object.entries(over.roles).map(([n, r]) => `- ${n}: ${rname(r)}`), "");
+  if (mine.length) L.push(t("exPrivate"), ...mine.map((m) => `- ${m}`), "");
+  L.push(t("exPlayers"), "");
+  Object.entries(P).forEach(([n, p]) => L.push(`### ${n}${p.dead ? ` (${t("diedAt", p.dead.day, p.dead.role ? rname(p.dead.role) : "")})` : ""}`,
+    `- ${t("exClaims")}: ${p.claims.map((c) => `${rname(c.role)} (${c.day})`).join(", ") || t("none")}`, `- ${t("exSusp")}: ${lst(p.suspects)}`, `- ${t("exTrust")}: ${lst(p.trusts)}`, `- ${t("exVoted")}: ${lst(p.votes)}`, ""));
+  const days = Object.keys(votes);
+  if (days.length) L.push(t("exVote"), "", `| | ${days.map((d) => t("day", d)).join(" | ")} |`, `|---|${days.map(() => "---").join("|")}|`, ...Object.keys(P).map((n) => `| ${n} | ${days.map((d) => votes[d][n] || "").join(" | ")} |`), "");
+  if (flags.length) L.push(t("exFlags"), ...flags.map((f) => `- ${f}`), "");
+  if (COST) L.push(t("exCost"), `$${COST.total.toFixed(4)}, ${COST.calls} calls, ${(COST.tokens / 1000).toFixed(1)}k tokens`, "", ...Object.entries(COST.ledger.who).map(([n, r]) => `- ${n}: $${r.cost.toFixed(4)} (${r.calls})`), "");
+  const my = store.get("ww-notes-" + GID, ""); if (my) L.push(t("exMine"), my, "");
+  if (window.analysisText) L.push(t("exAI"), window.analysisText, "");
+  L.push(t("exTranscript"), "");
+  EV.forEach((e) => { if (e.type === "say") L.push(`**${e.who}** (${t("dayRound", e.day, e.round)}): ${e.text}`); else if (e.type === "narrate") L.push(`*${e.text}*`); else if (e.type === "vote") L.push(`- ${e.who} → ${e.target}`); else if (e.type === "death") L.push(`**☠ ${e.who}**${e.role ? " (" + rname(e.role) + ")" : ""}`); else if (e.type === "private") L.push(`> ${e.text}`); });
+  if (over) L.push("", t("exThoughts"), ...over.thoughts.map((x) => `- ${t("day", x.day)} ${x.who} (${x.task}): ${x.thought}`));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([L.join("\n")], { type: "text/markdown" }));
+  a.download = `werewolf-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`;
+  a.click();
+}
+
+// ---------------- voices (the browser's built-in speech, free) ----------------
+let voiceOn = store.get("ww-voice", false), curDone = null;
+const FEMALE = /samantha|karen|victoria|moira|tessa|fiona|zira|susan|serena|allison|ava|female|kate|catherine|hazel|libby|sonia|aria|jenny|emma|amy|joanna|kendra|kimberly|salli|ivy|nicole|olivia|martha|ting-?ting|mei-?jia|sin-?ji|yu-?shu|xiaoxiao|xiaoyi|xiaohan|huihui|yaoyao|hanhan|lili|tracy|女/i;
+// macOS ships joke voices (Zarvox, Bad News, Whisper...) that sound weird. Never use them.
+const NOVELTY = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical|princess|junior|ralph|kathy|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|fred/i;
+function voicePool() {
+  const code = GLANG === "zh" ? /^zh/i : /^en/i;
+  const all = (window.speechSynthesis?.getVoices() || []).filter((v) => code.test(v.lang) && !NOVELTY.test(v.name));
+  const score = (v) => (/premium|enhanced|natural|neural/i.test(v.name) ? 0 : /google|microsoft/i.test(v.name) ? 1 : 2) + (/CN|US|GB/i.test(v.lang) ? 0 : 0.5);
+  return all.sort((a, b) => score(a) - score(b));
+}
+const MALE_ORDER = ["rex", "bruno", "sage", "dex"], FEMALE_ORDER = ["luna", "mimi", "nana", "pixel"];
+function voiceFor(who) {
+  const voices = voicePool();
+  const pl = PL[who], cfg = pl?.id ? CFG?.roster.find((r) => r.id === pl.id) : null;
+  if (!cfg) return { v: voices[0], pitch: 0.95, rate: 0.88 }; // the narrator: slow and dramatic
+  const female = cfg.voice.gender === "f";
+  const pool = voices.filter((v) => FEMALE.test(v.name) === female);
+  const lst = pool.length ? pool : voices;
+  const idx = (female ? FEMALE_ORDER : MALE_ORDER).indexOf(cfg.id);
+  const pitch = Math.min(1.12, Math.max(0.92, 1 + (cfg.voice.pitch - 1) * 0.3));
+  const rate = Math.min(1.1, Math.max(0.9, 1 + (cfg.voice.rate - 1) * 0.5));
+  return { v: lst[Math.max(idx, 0) % (lst.length || 1)], pitch, rate };
+}
+function speak(text, who) {
+  return new Promise((resolve) => {
+    if (!voiceOn || !window.speechSynthesis) return resolve();
+    const { v, pitch, rate } = voiceFor(who);
+    const u = new SpeechSynthesisUtterance(text);
+    if (v) u.voice = v; u.lang = v?.lang || (GLANG === "zh" ? "zh-CN" : "en-US"); u.pitch = pitch; u.rate = rate;
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; curDone = null; $("skipBtn").hidden = true; Music.duck(false); resolve(); };
+    curDone = done; $("skipBtn").hidden = false; Music.duck(true);
+    u.onend = u.onerror = done;
+    setTimeout(done, 4000 + text.length * (GLANG === "zh" ? 260 : 110)); // never get stuck if the browser drops an utterance
+    speechSynthesis.speak(u);
+  });
+}
+function stopSpeech() { try { speechSynthesis.cancel(); } catch {} curDone?.(); }
+function voiceUnlock() { if (voiceOn) { try { speechSynthesis.speak(new SpeechSynthesisUtterance(" ")); } catch {} } }
+function paintVoice() { $("voiceBtn").textContent = voiceOn ? t("voiceOn") : t("voiceOff"); }
+$("voiceBtn").onclick = () => { voiceOn = !voiceOn; store.set("ww-voice", voiceOn); if (!voiceOn) stopSpeech(); else voiceUnlock(); paintVoice(); };
+$("skipBtn").onclick = stopSpeech;
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
+</script>
+<script src="/music.js"></script>
+<script>applyLang();</script>
+</body>
+</html>
